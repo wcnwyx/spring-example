@@ -1,8 +1,6 @@
 初始化方法refresh()中调用的这两个方法都是来处理spring内部事件发布订阅的逻辑。  
 initApplicationEventMulticaster() 用来初始化一个事件多播器。  
 registerListeners() 将事件监听器注册到多播器里。  
-注册Listener并不是只有这一个地方在处理，这里处理的都是实现了ApplicationListener接口的bean，  
-还有通过注解@EventListener声明的事件监听器，注解实现的监听器注册是通过EventListenerMethodProcessor这个处理器来实现的，该逻辑我们后续再看。
 
 ```java
 public abstract class AbstractApplicationContext extends DefaultResourceLoader
@@ -32,6 +30,8 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
     }
 
     //将事件监听器注册到多播器里
+    //注册Listener并不是只有这一个地方在处理，这里处理的都是实现了ApplicationListener接口的bean，
+    //还有通过注解@EventListener声明的事件监听器，注解实现的监听器注册是通过EventListenerMethodProcessor这个处理器来实现的，该逻辑我们后续再看。
     protected void registerListeners() {
         // 添加内部变量applicationListeners中已有的监听器
         for (ApplicationListener<?> listener : getApplicationListeners()) {
@@ -39,6 +39,8 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
         }
 
         //将所有ApplicationListener类型的bean获取到逐个注册到多播器里
+        //此处只是注册了beanName,
+        // 真正的bean是在bean实例化后，通过ApplicationListenerDetector完成注册到多播器里的
         String[] listenerBeanNames = getBeanNamesForType(ApplicationListener.class, true, false);
         for (String listenerBeanName : listenerBeanNames) {
             getApplicationEventMulticaster().addApplicationListenerBean(listenerBeanName);

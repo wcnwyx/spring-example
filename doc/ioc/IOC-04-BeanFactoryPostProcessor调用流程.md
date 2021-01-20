@@ -33,6 +33,11 @@ public interface BeanDefinitionRegistryPostProcessor extends BeanFactoryPostProc
 ```java
 public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	implements ConfigurableApplicationContext, DisposableBean{
+
+    public void refresh() throws BeansException, IllegalStateException {
+        //调用执行该Context中定义的所有BeanFactoryPostProcessor（后续单独文章中介绍）
+        invokeBeanFactoryPostProcessors(beanFactory);
+    }
     
     /**
      * Instantiate and invoke all registered BeanFactoryPostProcessor beans,

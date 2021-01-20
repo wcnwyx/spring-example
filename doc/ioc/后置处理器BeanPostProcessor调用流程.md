@@ -9,7 +9,9 @@ public interface BeanPostProcessor {
 }
 ```
 
-BeanPostProcessor接口方法的调用时机，从创建bean的doCreateBean方法展示，可以清晰看到两个方法的调用时机
+BeanPostProcessor接口方法的调用时机，从
+
+创建bean的doCreateBean方法展示，可以清晰看到两个方法的调用时机
 ```java
 public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFactory
         implements AutowireCapableBeanFactory {

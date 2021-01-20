@@ -10,6 +10,7 @@
     <version>1.0</version>
     <modules>
         <module>spring-ioc</module>
+        <module>spring-aop</module>
     </modules>
 
     <properties>
