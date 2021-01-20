@@ -28,7 +28,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
                 //注册并实例化所有的BeanPostProcessor（后续单独文章中介绍）
                 registerBeanPostProcessors(beanFactory);
 
-                // Initialize message source for this context.
+                //初始化MessageSource,用于国际化逻辑处理（此篇后部分介绍）
                 initMessageSource();
 
                 //初始化事件多播器（后续单独文章中介绍）
@@ -140,6 +140,38 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
         }
         if (!beanFactory.containsLocalBean(SYSTEM_ENVIRONMENT_BEAN_NAME)) {
             beanFactory.registerSingleton(SYSTEM_ENVIRONMENT_BEAN_NAME, getEnvironment().getSystemEnvironment());
+        }
+    }
+
+    //初始化MessageSource,用于国际化逻辑处理
+    protected void initMessageSource() {
+        ConfigurableListableBeanFactory beanFactory = getBeanFactory();
+        if (beanFactory.containsLocalBean(MESSAGE_SOURCE_BEAN_NAME)) {
+            //如果已有messageSource，获取到bean
+            this.messageSource = beanFactory.getBean(MESSAGE_SOURCE_BEAN_NAME, MessageSource.class);
+            // Make MessageSource aware of parent MessageSource.
+            if (this.parent != null && this.messageSource instanceof HierarchicalMessageSource) {
+                HierarchicalMessageSource hms = (HierarchicalMessageSource) this.messageSource;
+                if (hms.getParentMessageSource() == null) {
+                    // Only set parent context as parent MessageSource if no parent MessageSource
+                    // registered already.
+                    hms.setParentMessageSource(getInternalParentMessageSource());
+                }
+            }
+            if (logger.isDebugEnabled()) {
+                logger.debug("Using MessageSource [" + this.messageSource + "]");
+            }
+        }
+        else {
+            //如果没有定义messageSource，新建一个供使用
+            DelegatingMessageSource dms = new DelegatingMessageSource();
+            dms.setParentMessageSource(getInternalParentMessageSource());
+            this.messageSource = dms;
+            beanFactory.registerSingleton(MESSAGE_SOURCE_BEAN_NAME, this.messageSource);
+            if (logger.isDebugEnabled()) {
+                logger.debug("Unable to locate MessageSource with name '" + MESSAGE_SOURCE_BEAN_NAME +
+                        "': using default [" + this.messageSource + "]");
+            }
         }
     }
 
