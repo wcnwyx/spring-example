@@ -1,0 +1,4 @@
+@EnableAspectJAutoProxy 通过该注解导入AspectJAutoProxyRegistrar。 @Import(AspectJAutoProxyRegistrar.class)
+
+注册一个AnnotationAwareAspectJAutoProxyCreator
+
