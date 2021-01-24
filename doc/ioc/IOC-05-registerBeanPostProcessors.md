@@ -3,7 +3,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	implements ConfigurableApplicationContext, DisposableBean{
 
     public void refresh() throws BeansException, IllegalStateException {
-        //注册并实例化所有的BeanPostProcessor（后续单独文章中介绍）
+        //注册并实例化所有的BeanPostProcessor
         registerBeanPostProcessors(beanFactory);
     }
 

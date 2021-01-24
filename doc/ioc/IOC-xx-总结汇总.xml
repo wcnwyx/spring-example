@@ -1,0 +1,302 @@
+<xml>
+    <refresh desc="完整的初始化流程" class="AbstractRefreshableApplicationContext">
+        <prepareRefresh desc="准备刷新，为Context的刷新操作准备一些数据" class="AbstractRefreshableApplicationContext">
+            <setParams desc="设置参数状态：startupDate、closed、active"/>
+            <initPropertySources desc="空方法，允许子类来重写该方法"/>
+            <validateRequiredProperties desc="获取并创建Environment，校验一些必须的属性"/>
+            <initEarlyApplicationEvents desc="初始化earlyApplicationEvents集合：定义一个集合来存储早期的ApplicationEvent数据。
+                //何为早期的ApplicationEvent呢？就是在事件多播器和监听器初始化之前需要发布的事件，因为多播器和监听器都还没有初始化，只能先暂存在这里，
+                //等到initApplicationEventMulticaster()和registerListeners()这两个方法执行过后，多播器和监听器就都初始化完成了，会把该集合中的事件全部发布出去"/>
+        </prepareRefresh>
+
+        <obtainFreshBeanFactory desc="通知子类刷新内部的BeanFactory并返回" class="AbstractRefreshableApplicationContext">
+            <refreshBeanFactory desc="刷新BeanFactory，抽象方法，各种子类实现自有逻辑。" class="AbstractRefreshableApplicationContext">
+                <!--下面的步骤我们以子类AbstractRefreshableApplicationContext的流程来说明，实际应用中就是基于xml文件的FileSystemXmlApplicationContext和ClassPathXmlApplicationContext的初始化。基于Annotation的这一步没有什么逻辑。-->
+                <hasBeanFactory desc="已经有了BeanFactory" class="">
+                    <destroyBeans desc="销毁已有的单实例bean"/>
+                    <closeBeanFactory desc="关闭已有的BeanFactory"/>
+                </hasBeanFactory>
+                <noneBeanFactory desc="还没有BeanFactory">
+                    <createBeanFactory desc="创建一个DefaultListableBeanFactory"/>
+                    <setParams desc="设置一些beanFactory属性：serializationId、allowBeanDefinitionOverriding、allowCircularReferences等"/>
+                    <loadBeanDefinitions1 desc="加载BeanDefinitions(bean的定义信息)" class="AbstractXmlApplicationContext">
+                        <createXmlBeanDefinitionReader desc="创建一个BeanDefinitionReader" />
+                        <initBeanDefinitionReader desc="初始化BeanDefinitionReader,设置Environment、ResourceLoader、EntityResolver、Validating"/>
+                        <loadBeanDefinitions2 desc="加载BeanDefinitions,通过XmlBeanDefinitionReader来加载" class="AbstractXmlApplicationContext">
+                            <!--循环所有的xml配置文件路径来加载-->
+                            <loadBeanDefinitions3 desc="根据配置文件的路径来加载BeanDefinitions" class="AbstractBeanDefinitionReader">
+                                <getResource desc="根据配置文件路径加载资源，加载为Resource类"/>
+                                <loadBeanDefinitions4 desc="根据解析好的Resource继续加载BeanDefinitions" clsaa="XmlBeanDefinitionReader">
+                                    <exchangeResource desc="将Resource转换成InputSource继续加载BeanDefinitions"/>
+                                    <doLoadBeanDefinitions>
+                                        <doLoadDocument desc="将InputSource加载为Document"/>
+                                        <registerBeanDefinitions1 desc="注册Document中定义的Bean信息">
+                                            <createBeanDefinitionDocumentReader desc="创建一个BeanDefinitionDocumentReader"/>
+                                            <registerBeanDefinitions2 desc="继续加载" class="DefaultBeanDefinitionDocumentReader">
+                                                <getDocumentElement desc="获取Document的Element"/>
+                                                <doRegisterBeanDefinitions>
+                                                    <createDelegate desc="创建一个解析器BeanDefinitionParserDelegate"/>
+                                                    <checkProfiles desc="校验profile属性"/>
+                                                    <preProcessXml desc="空方法，子类可以扩展"/>
+                                                    <parseBeanDefinitions>
+                                                        <loop_Element_node desc="循环Element中的所有Node进行解析">
+                                                            <parseDefaultElement desc="如果namespace是默认的，既http://www.springframework.org/schema/beans">
+                                                                <importBeanDefinitionResource desc="解析处理import标签的逻辑，逻辑为加载到资源继续调用loadBeanDefinitions方法"/>
+                                                                <processAliasRegistration desc="解析处理alias标签逻辑，将信息注册到DeanDefinitionRegistry的aliasMap中"/>
+                                                                <processBeanDefinition desc="解析处理bean标签逻辑">
+                                                                    <parseBeanDefinitionElement desc="具体解析bean标签的每一个属性" class="BeanDefinitionParserDelegate">
+                                                                        <parseId desc="解析id属性"/>
+                                                                        <parseName desc="解析name属性"/>
+                                                                        <checkNameUniqueness desc="校验beanName是否唯一"/>
+                                                                        <parseClass desc="解析class属性"/>
+                                                                        <parseParent desc="解析parent属性"/>
+                                                                        <parseDescription desc="解析description属性"/>
+                                                                        <parseMetaElements desc="解析meta属性"/>
+                                                                        <parseLookupOverrideSubElements desc="解析lookup-method属性"/>
+                                                                        <parseReplacedMethodSubElements desc="解析replaced-method属性"/>
+                                                                        <parseConstructorArgElements desc="解析constructor-arg属性"/>
+                                                                        <parsePropertyElements desc="解析property属性"/>
+                                                                        <parseQualifierElements desc="解析qualifier属性"/>
+                                                                        <generateBeanName desc="如果id、name都没有，在此处生成beanName"/>
+                                                                    </parseBeanDefinitionElement>
+                                                                    <registerBeanDefinition1 desc="将解析好的BeanDefinition注册到注册表（BeanDefinitionRegistry）中">
+                                                                        <registerBeanDefinition2 desc="实际的注册逻辑" class="DefaultListableBeanFactory">
+                                                                            <validate desc="校验BeanDefinition"/>
+                                                                            <existingDefinition desc="已经存在相同beanName的BeanDefinition">
+                                                                                <isAllowBeanDefinitionOverriding desc="如果不允许覆盖，抛出异常BeanDefinitionStoreException"/>
+                                                                                <checkRole desc="如果后注册的BeanDefinition等级比已有的低（比如说后注册的是用户角色，已有的是系统级别的，就会打印警告日志）"/>
+                                                                                <checkEquals desc="新注册的BeanDefinition和已有的不相等,打印日志"/>
+                                                                                <save desc="将新的BeanDefinition put到beanDefinitionMap中"/>
+                                                                            </existingDefinition>
+                                                                            <notExistingDefinition desc="不存在该beanName">
+                                                                                <isBeanCreationStarted desc="当前已经不是启动注册阶段了，有的bean已经被创建实例化了，进行特殊的处理，上锁存储数据"/>
+                                                                                <notBeanCreationStarted desc="仍处于启动注册阶段，直接处理,beanDefinitionMap、 beanDefinitionNames存储数据"/>
+                                                                            </notExistingDefinition>
+                                                                        </registerBeanDefinition2>
+                                                                    </registerBeanDefinition1>
+                                                                    <fireComponentRegistered desc="发布一个事件通知，空方法"/>
+                                                                </processBeanDefinition>
+                                                                <doRegisterBeanDefinitions desc="解析处理beans标签逻辑，递归调用doRegisterBeanDefinitions方法"/>
+                                                            </parseDefaultElement>
+                                                        </loop_Element_node>
+                                                        <parseCustomElement desc="如果namespace是非默认的，使用各自的NamespaceHandler来解析处理" class="BeanDefinitionParserDelegate">
+                                                            <getNamespaceHandler desc="根据namespace uri获取NamespaceHandler"/>
+                                                            <handler.parse desc="各个自定义的NamespaceHandler处理各自的业务，本处看一下ContextNamespaceHandler解析的逻辑" class="ContextNamespaceHandler">
+                                                                <findParserForElement desc="根据Element获取对应的解析器，这些解析器都是在NamespaceHandler的init方法中绑定好了关系"/>
+                                                                <ComponentScanBeanDefinitionParser.parse desc="以context:component-scan这个节点的解析器来梳理下逻辑">
+                                                                    <parseBasePackage desc="解析base-package属性"/>
+                                                                    <newAndConfigScanner desc="创建一个扫描器ClassPathBeanDefinitionScanner，并配置。AnnotationConfigApplicationContext中的扫描逻辑也是使用该类进行的">
+                                                                        <createScanner desc="new 一个 ClassPathBeanDefinitionScanner"/>
+                                                                        <parseUseDefaultFilters desc="解析use-default-filters属性,默认是true"/>
+                                                                        <setBeanDefinitionDefaults desc="给扫描器设置一个默认的BeanDefinition对象，用于给解析的BeanDefinition赋值时，没有制定配置的情况下采用默认值"/>
+                                                                        <setAutowireCandidatePatterns desc="解析default-autowire-candidates属性"/>
+                                                                        <setResourcePattern desc="解析resource-pattern属性"/>
+                                                                        <parseBeanNameGenerator desc="解析处理name-generator属性，设置beanName生成器。默认使用的是AnnotationBeanNameGenerator，生成规则是首字母小写"/>
+                                                                        <parseScope desc="解析处理scope-resolver和scoped-proxy属性。默认使用的是AnnotationScopeMetadataResolver"/>
+                                                                        <parseTypeFilters desc="解析include-filter和exclude-filter属性"/>
+                                                                    </newAndConfigScanner>
+                                                                    <doScan desc="执行扫描操作，将根据component-scan配置的扫描规则以及class的注解信息，将符合条件的class解析成BeanDefinition并注册" class="ClassPathBeanDefinitionScanner">
+                                                                        <loop_basePackage desc="循环多个包，依次扫描">
+                                                                            <findCandidateComponents desc="扫描目录下的候选组件，既带有@Component、@Service等注解的类，解析成BeanDefinition返回">
+                                                                                <resolveBasePackage desc="拼接完整的路径"/>
+                                                                                <getResources desc="将路径下的类解析成Resource对象"/>
+                                                                                <loop_resources desc="循环处理所有的Resource">
+                                                                                    <getMetadataReader desc="获取元数据读取器，用来读取类的元数据和注解的元数据信息"/>
+                                                                                    <isCandidateComponent1 desc="判断是否是候选组件类，根据include-filter和exclude-filter属性以及@Conditional来判断是否符合">
+                                                                                        <createBeanDefinition desc="new一个ScannedGenericBeanDefinition，这里可以看出，通过扫描出来的BeanDefinition使用的都是ScannedGenericBeanDefinition这个子类"/>
+                                                                                        <isCandidateComponent2 desc="再次判断是否可以成为候选组件，判断是否为抽象类、接口以及LoopUp注解判断"/>
+                                                                                    </isCandidateComponent1>
+                                                                                </loop_resources>
+                                                                            </findCandidateComponents>
+                                                                            <loop_BeanDefinition desc="循环上一步扫描出来的组件集合">
+                                                                                <setScope desc="设置scope属性"/>
+                                                                                <generateBeanName desc="生成beanName"/>
+                                                                                <postProcessBeanDefinition desc="根据BeanDefinitionDefault设置属性默认值，设置BeanDefinition的autowireCandidate属性"/>
+                                                                                <processCommonDefinitionAnnotations desc="解析一些通用的注解并赋值给BeanDefinition，有@Lazy、@Primary、@DependsOn、@Role、@Description"/>
+                                                                                <checkCandidate desc="检测beanName是否已被注册">
+                                                                                    <registerBeanDefinition desc="实际注册的逻辑和上一段讲的基于xml的BeanDefinition解析注册中的注册逻辑就是一样的了"/>
+                                                                                </checkCandidate>
+                                                                            </loop_BeanDefinition>
+                                                                        </loop_basePackage>
+                                                                    </doScan>
+                                                                </ComponentScanBeanDefinitionParser.parse>
+                                                            </handler.parse>
+                                                        </parseCustomElement>
+                                                    </parseBeanDefinitions>
+                                                    <postProcessXml desc="空方法，子类可以扩展"/>
+                                                </doRegisterBeanDefinitions>
+                                            </registerBeanDefinitions2>
+                                        </registerBeanDefinitions1>
+                                    </doLoadBeanDefinitions>
+                                </loadBeanDefinitions4>
+                            </loadBeanDefinitions3>
+                        </loadBeanDefinitions2>
+                    </loadBeanDefinitions1>
+                </noneBeanFactory>
+            </refreshBeanFactory>
+            <getBeanFactory desc="获取BeanFactory，供后续方法使用，抽象方法，个种子类返回自己特有的BeanFactory类型（都是使用的DefaultListableBeanFactory）"/>
+        </obtainFreshBeanFactory>
+
+        <prepareBeanFactory desc="准备BeanFactory" class="AbstractRefreshableApplicationContext">
+            <setBeanClassLoader desc="设置BeanClassLoader"/>
+            <setBeanExpressionResolver desc="设置BeanExpressionResolver"/>
+            <addPropertyEditorRegistrar desc="设置PropertyEditorRegistrar"/>
+            <addBeanPostProcessor desc="添加一个BeanPostProcessor（ApplicationContextAwareProcessor），用于处理Aware接口的逻辑"/>
+            <ignoreDependencyInterface desc="在autowiring的时候忽略哪些接口"/>
+            <registerResolvableDependency desc="在autowiring的时候，如果是这些接口，那就采用后面参数的bean来装配"/>
+            <addBeanPostProcessor desc="添加一个BeanPostProcessor（ApplicationListenerDetector），用于在bean实例化完成并且调用完初始化方法后，如果是ApplicationListener，就注册到多播器中"/>
+            <addBeanPostProcessor desc="添加一个BeanPostProcessor（LoadTimeWeaverAwareProcessor），用于处理LoadTimeWeaverAware接口的逻辑"/>
+            <registerSingleton desc="注册一些固定的singleton bean(Environment、SystemProperties、SystemEnvironment)"/>
+        </prepareBeanFactory>
+
+        <postProcessBeanFactory desc="此类中该方法为空，允许子类重写该方法"/>
+
+        <invokeBeanFactoryPostProcessors desc="调用执行该Context中定义的所有BeanFactoryPostProcessor">
+            <invokeBeanFactoryPostProcessors2 desc="这个方法代码挺长，其实逻辑很简单，先是处理子接口BeanDefinitionRegistryPostProcessor，再处理父接口BeanFactoryPostProcessor" class="PostProcessorRegistrationDelegate">
+                <loop_order_BeanDefinitionRegistryPostProcessor desc="按照实现了接口PriorityOrdered、Ordered和普通的排序，在逐个调用">
+                    <!--处理注解@Configuration的就是BeanDefinitionRegistryPostProcessor的一个实现类（ConfigurationClassPostProcessor）在此处被调用处理的，用来扫描并注册BeanDefinition-->
+                    <postProcessBeanDefinitionRegistry desc="执行BeanDefinitionRegistryPostProcessor的postProcessBeanDefinitionRegistry方法"/>
+                </loop_order_BeanDefinitionRegistryPostProcessor>
+                <loop_order_BeanFactoryPostProcessor desc="按照实现了接口PriorityOrdered、Ordered和普通的排序，在逐个调用">
+                    <postProcessBeanFactory desc="执行BeanFactoryPostProcessor的postProcessBeanFactory方法"/>
+                </loop_order_BeanFactoryPostProcessor>
+            </invokeBeanFactoryPostProcessors2>
+            <addBeanPostProcessor desc="添加后置处理器LoadTimeWeaverAwareProcessor"/>
+        </invokeBeanFactoryPostProcessors>
+
+        <registerBeanPostProcessors desc="注册并实例化所有的BeanPostProcessor" class="AbstractRefreshableApplicationContext">
+            <registerBeanPostProcessors2 desc="按照给定的顺序实例化并注册所有的BeanPostProcessor" class="PostProcessorRegistrationDelegate">
+                <loop_order_BeanPostProcessors desc="循环处理，先注册实现PriorityOrdered接口的、再注册实现Ordered接口的、再注册常规的、最后注册所有的MergedBeanDefinitionPostProcessor"/>
+                <addBeanPostProcessor desc="注册ApplicationListenerDetector，该processor的作用是判断bean是否是ApplicationListener，如果是的话注册到多播器（ApplicationEventMulticaster）里"/>
+            </registerBeanPostProcessors2>
+        </registerBeanPostProcessors>
+
+        <initMessageSource desc="初始化MessageSource,用于国际化逻辑处理">
+            <getBeanFactory desc="获取BeanFactory"/>
+            <hasMessageSource>
+                <setParentMessageSource desc="设置MessageSource的父节点"/>
+            </hasMessageSource>
+            <notHasMessageSource>
+                <registerSingleton desc="当前beanFactory中没有MessageSource，注册一个DelegatingMessageSource"/>
+            </notHasMessageSource>
+        </initMessageSource>
+
+        <initApplicationEventMulticaster desc="初始化事件多播器" class="AbstractApplicationContext">
+            <getBeanFactory desc="获取BeanFactory"/>
+            <containsLocalBean desc="beanFactory中已经有了多播器">
+                <getBean desc="获取多播器，保存在ApplicationContext中"/>
+            </containsLocalBean>
+            <notContainsLocalBean desc="beanFactory中没有多播器">
+                <create desc="new 一个多播器SimpleApplicationEventMulticaster"/>
+                <registerSingleton desc="将新建的多播器注册到beanFactory中"/>
+            </notContainsLocalBean>
+        </initApplicationEventMulticaster>
+
+        <onRefresh desc="此方法为空，允许子类来重写该方法"/>
+
+        <registerListeners desc="注册事件监听器。注册Listener并不是只有这一个地方在处理，这里处理的都是实现了ApplicationListener接口的bean。
+            还有通过注解@EventListener声明的事件监听器，注解实现的监听器注册是通过EventListenerMethodProcessor这个处理器来实现的。
+            ">
+            <addApplicationListener desc="添加内部变量applicationListeners中已有的监听器"/>
+            <addApplicationListenerBean desc="将所有ApplicationListener类型的bean获取到逐个注册到多播器里。
+                此处只是注册了beanName,真正的bean是在bean实例化后，通过ApplicationListenerDetector完成注册到多播器里的"/>
+            <multicastEvent desc="之前可以会有ApplicationEvent，但是因为Multicaster和Listener都还未初始化，所以会暂存在earlyApplicationEvents中
+                这里就可以将earlyApplicationEvents里的时间进行多播处理了。prepareRefresh方法中初始化了earlyApplicationEvents该变量"/>
+        </registerListeners>
+
+        <finishBeanFactoryInitialization desc="实例化所有剩余的非lazy-init的单实例bean" class="AbstractApplicationContext">
+            <freezeConfiguration desc="设置装填，不允许再改变BeanDefinition"/>
+            <preInstantiateSingletons desc="循环实例化所有的singleton bean" class="DefaultListableBeanFactory">
+                <loop_beanName desc="循环所有的beanName逐个调用getBean">
+                    <check desc="非抽象 并且 是单实例 并且 非懒加载">
+                        <isFactoryBean desc="判断是否是FactoryBean">
+                            <isEagerInit desc="是否可以过早的实例化">
+                                <getBean desc="获取bean，不再此继续铺开罗列，在非FactoryBean的地方罗列"/>
+                            </isEagerInit>
+                        </isFactoryBean>
+                        <getBean desc="从bean容器中获取bean实例">
+                            <doGetBean desc="获取bean实例" class="AbstractBeanFactory">
+                                <transformedBeanName desc="处理FactoryBean类型的beanName，如果是通过加上前缀&amp;beanName获取的FactoryBean本身,这个方法会将前缀&amp;符号去掉"/>
+                                <getSingleton desc="从缓存中来查找是否保存有实例化好的singletonBean" class="DefaultSingletonBeanRegistry">
+                                    <singletonObjects desc="先从singletonObjects这个map中获取"/>
+                                    <earlySingletonObjects desc="如果上一步没有获取到，并且该bean标记为正在创建，再从earlySingletonObjects中获取"/>
+                                    <singletonFactories desc="如果上一步还没有获取到，并且允许早期引用，再从singletonFactories中获取"/>
+                                </getSingleton>
+                                <alreadyHas desc="缓存中已有该bean">
+                                    <getObjectForBeanInstance desc="解决FactoryBean类型的真实对象获取"/>
+                                </alreadyHas>
+                                <notHas desc="缓存中还没有该bean的实例，执行创建流程">
+                                    <markBeanAsCreated desc="标记该bean为已创建，防止重复创建"/>
+                                    <getDependsOn desc="有dependsOn的bean，逐个调用getBean()">
+                                        <getBean2 desc="此处就又递归回了上面的getBean方法"/>
+                                    </getDependsOn>
+                                    <isSingleton desc="singleton类型的bean创建">
+                                        <getSingleton2 desc="">
+                                            <singletonsCurrentlyInDestruction desc="此bean正在销毁，抛出异常BeanCreationNotAllowedException"/>
+                                            <beforeSingletonCreation desc="标记此singleton bean正在创建中，singletonsCurrentlyInCreation这个集合中放入了beanName"/>
+                                            <singletonFactory.getObject desc="通过singletonFactory的getObject方法调用createBean()来创建">
+                                                <createBean desc="创建bean对象" class="AbstractAutowireCapableBeanFactory">
+                                                    <resolveBeanClass desc="获取bean的class类型"/>
+                                                    <prepareMethodOverrides desc="处理重写方法"/>
+                                                    <resolveBeforeInstantiation desc="给BeanPostProcessors 一个机会 返回一个代理对象（AOP的代理对象就是在这里创建返回的）">
+                                                        <postProcessBeforeInstantiation desc="调用后置处理器InstantiationAwareBeanPostProcessor的postProcessBeforeInstantiation方法"/>
+                                                        <postProcessAfterInitialization desc="如果上一步创建除了一个代理对象，执行BeanPostProcessor后置处理器的postProcessAfterInitialization方法"/>
+                                                    </resolveBeforeInstantiation>
+                                                    <doCreateBean desc="上面的通过后置处理器没有创建出对象，再次继续创建" class="AbstractAutowireCapableBeanFactory">
+                                                        <createBeanInstance desc="创建bean实例"/>
+                                                        <applyMergedBeanDefinitionPostProcessors desc="循环调用所有的MergedBeanDefinitionPostProcessor的postProcessMergedBeanDefinition方法"/>
+                                                        <addSingletonFactory desc="如果是单实例并且允许循环引用并且该bean已经开始创建，将上面创建出来的bean实例，通过封装成一个ObjectFactory对象添加到singletonFactories这个map中
+                                                            ,ObjectFactory方法中的getObject方法调用的是getEarlyBeanReference()" class="DefaultSingletonBeanRegistry">
+                                                            <getEarlyBeanReference desc="循环调用SmartInstantiationAwareBeanPostProcessor的getEarlyBeanReference返回对象"/>
+                                                        </addSingletonFactory>
+                                                        <populateBean desc="给bean的属性赋值">
+                                                            <postProcessAfterInstantiation desc="循环调用后置处理器InstantiationAwareBeanPostProcessor的postProcessAfterInstantiation方法"/>
+                                                            <autowireByName desc="处理自动注入"/>
+                                                            <autowireByType desc="处理自动注入"/>
+                                                            <postProcessPropertyValues desc="循环调用所有后置处理器InstantiationAwareBeanPostProcessor的postProcessPropertyValues方法"/>
+                                                            <applyPropertyValues desc="属性赋值"/>
+                                                        </populateBean>
+                                                        <initializeBean>
+                                                            <invokeAwareMethods desc="aware接口set相应的资源，这里只处理了三个（BeanNameAware、BeanClassLoaderAware、BeanFactoryAware）"/>
+                                                            <postProcessBeforeInitialization desc="循环调用所有后置处理器BeanPostProcessor的postProcessBeforeInitialization方法"/>
+                                                            <invokeInitMethods desc="调用初始化方法">
+                                                                <afterPropertiesSet desc="如果该bean是实现了InitializingBean接口，则调用afterPropertiesSet方法"/>
+                                                                <invokeCustomInitMethod desc="调用自定义的init方法"/>
+                                                            </invokeInitMethods>
+                                                            <postProcessAfterInitialization desc="循环调用所有后置处理器BeanPostProcessor的postProcessAfterInitialization方法"/>
+                                                        </initializeBean>
+                                                        <registerDisposableBeanIfNecessary desc="注册bean销毁方法destroy-method"/>
+                                                    </doCreateBean>
+                                                </createBean>
+                                            </singletonFactory.getObject>
+                                            <afterSingletonCreation desc="移除此singleton bean 正在创建的标记"/>
+                                            <addSingleton desc="新创建的bean，加到singletonObjects这个map中缓存起来，并且从singletonFactories、和earlySingletonObjects中移除"/>
+                                        </getSingleton2>
+                                        <getObjectForBeanInstance desc="解决FactoryBean类型的真实对象获取"/>
+                                    </isSingleton>
+                                    <isPrototype desc="prototype类型的bean创建">
+                                        <beforePrototypeCreation desc="标记正在创建中"/>
+                                        <createBean desc="和isSingleton中的createBean是一个逻辑，此处不再铺开梳理"/>
+                                        <afterPrototypeCreation desc="删除创建中的标记"/>
+                                        <getObjectForBeanInstance desc="解决FactoryBean类型的真实对象获取"/>
+                                    </isPrototype>
+                                </notHas>
+                            </doGetBean>
+                        </getBean>
+                    </check>
+                </loop_beanName>
+                <loop_beanName desc="循环所有的beanName">
+                    <getSingleton desc="获取单实例bean对象"/>
+                    <afterSingletonsInstantiated desc="如果该bean是实现SmartInitializingSingleton接口的，调用afterSingletonsInstantiated方法"/>
+                </loop_beanName>
+            </preInstantiateSingletons>
+        </finishBeanFactoryInitialization>
+
+        <finishRefresh desc="最后一步，处理LifecycleProcessor、发布事件ContextRefreshedEvent">
+            <initLifecycleProcessor desc="判断是否有lifecycleProcessor bean，没有的话注册一个DefaultLifecycleProcessor"/>
+            <onRefresh dec="调用lifecycleProcessor的onRefresh方法"/>
+            <publishEvent desc="发布一个ContextRefreshedEvent事件"/>
+            <LiveBeansView desc="将ApplicationContext注册到LiveBeansView中"/>
+        </finishRefresh>
+    </refresh>
+</xml>

@@ -165,20 +165,18 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 
             for (Resource resource : resources) {
                 if (resource.isReadable()) {
-                    try {
-                        //获取元数据读取器，用来读取类的元数据和注解的元数据信息
-                        MetadataReader metadataReader = this.metadataReaderFactory.getMetadataReader(resource);
-                        //判断是否是候选组件类，根据include-filter和exclude-filter属性以及@Conditional来判断是否符合
-                        if (isCandidateComponent(metadataReader)) {
-                            //这里可以看出，通过扫描出来的BeanDefinition使用的都是ScannedGenericBeanDefinition这个子类
-                            ScannedGenericBeanDefinition sbd = new ScannedGenericBeanDefinition(metadataReader);
-                            sbd.setResource(resource);
-                            sbd.setSource(resource);
+                    //获取元数据读取器，用来读取类的元数据和注解的元数据信息
+                    MetadataReader metadataReader = this.metadataReaderFactory.getMetadataReader(resource);
+                    //判断是否是候选组件类，根据include-filter和exclude-filter属性以及@Conditional来判断是否符合
+                    if (isCandidateComponent(metadataReader)) {
+                        //这里可以看出，通过扫描出来的BeanDefinition使用的都是ScannedGenericBeanDefinition这个子类
+                        ScannedGenericBeanDefinition sbd = new ScannedGenericBeanDefinition(metadataReader);
+                        sbd.setResource(resource);
+                        sbd.setSource(resource);
 
-                            //再次判断是否可以成为候选组件，判断是否为抽象类、接口以及LoopUp注解判断
-                            if (isCandidateComponent(sbd)) {
-                                candidates.add(sbd);
-                            }
+                        //再次判断是否可以成为候选组件，判断是否为抽象类、接口以及LoopUp注解判断
+                        if (isCandidateComponent(sbd)) {
+                            candidates.add(sbd);
                         }
                     }
                 }
