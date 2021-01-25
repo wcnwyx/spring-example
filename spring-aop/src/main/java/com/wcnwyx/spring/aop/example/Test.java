@@ -7,9 +7,7 @@ public class Test {
     public static void main(String[] args) {
         AbstractApplicationContext applicationContext = new AnnotationConfigApplicationContext(Config.class);
         DemoBean demoBean = applicationContext.getBean("demoBean", DemoBean.class);
-//        demoBean.div(1, 1);
         System.out.println(demoBean);
-        DemoBeanA demoBeanA = applicationContext.getBean("demoBeanA", DemoBeanA.class);
-        System.out.println(demoBeanA.getDemoBean());
+        demoBean.div(1, 1);
     }
 }

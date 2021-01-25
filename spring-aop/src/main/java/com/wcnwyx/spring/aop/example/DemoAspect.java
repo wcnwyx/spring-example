@@ -16,7 +16,6 @@ public class DemoAspect {
     //抽象出公共的切入点表达式
     @Pointcut("execution(public int com.wcnwyx.spring.aop.example.DemoBean.*(..))")
     public void pointCut(){
-
     }
 
     //前置通知

@@ -51,3 +51,43 @@ SmartInstantiationAwareBeanPostProcessor接口及其父类接口主要在AOP中�
 1：getEarlyBeanReference 如果存在循环引用的情况下，会通过该方法生成代理对象。  
 2：postProcessBeforeInstantiation 如果有TargetSourceCreator的情况下，该方法直接创建代理对象，都不会调用doCreateBean方法。  
 3：postProcessAfterInitialization 默认情况下都是在该方法中返回了代理对象。  
+
+
+```java
+public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
+        implements SmartInstantiationAwareBeanPostProcessor, BeanFactoryAware {
+    
+    protected Object wrapIfNecessary(Object bean, String beanName, Object cacheKey) {
+        //targetSourcedBeans包含该beanName说明已经生成过该bean的代理了
+        //targetSourcedBeans在postProcessBeforeInstantiation该方法中创建代理时会add进去记录
+        if (beanName != null && this.targetSourcedBeans.contains(beanName)) {
+            return bean;
+        }
+        
+        //该bean处理过并且是不需要增强的类
+        if (Boolean.FALSE.equals(this.advisedBeans.get(cacheKey))) {
+            return bean;
+        }
+        
+        //isInfrastructureClass判断是否是基础设施类，判断bean.getClass()是否是Advice、Pointcut、Advisor、AopInfrastructureBean或者他们的父类或父接口
+        //
+        if (isInfrastructureClass(bean.getClass()) || shouldSkip(bean.getClass(), beanName)) {
+            this.advisedBeans.put(cacheKey, Boolean.FALSE);
+            return bean;
+        }
+
+        // Create proxy if we have advice.
+        Object[] specificInterceptors = getAdvicesAndAdvisorsForBean(bean.getClass(), beanName, null);
+        if (specificInterceptors != DO_NOT_PROXY) {
+            this.advisedBeans.put(cacheKey, Boolean.TRUE);
+            Object proxy = createProxy(
+                    bean.getClass(), beanName, specificInterceptors, new SingletonTargetSource(bean));
+            this.proxyTypes.put(cacheKey, proxy.getClass());
+            return proxy;
+        }
+
+        this.advisedBeans.put(cacheKey, Boolean.FALSE);
+        return bean;
+    }    
+}
+```
