@@ -1,6 +1,6 @@
 <xml>
-    <refresh desc="完整的初始化流程" class="AbstractRefreshableApplicationContext">
-        <prepareRefresh desc="准备刷新，为Context的刷新操作准备一些数据" class="AbstractRefreshableApplicationContext">
+    <refresh desc="完整的初始化流程" class="AbstractApplicationContext">
+        <prepareRefresh desc="准备刷新，为Context的刷新操作准备一些数据" class="AbstractApplicationContext">
             <setParams desc="设置参数状态：startupDate、closed、active"/>
             <initPropertySources desc="空方法，允许子类来重写该方法"/>
             <validateRequiredProperties desc="获取并创建Environment，校验一些必须的属性"/>
@@ -9,7 +9,7 @@
                 //等到initApplicationEventMulticaster()和registerListeners()这两个方法执行过后，多播器和监听器就都初始化完成了，会把该集合中的事件全部发布出去"/>
         </prepareRefresh>
 
-        <obtainFreshBeanFactory desc="通知子类刷新内部的BeanFactory并返回" class="AbstractRefreshableApplicationContext">
+        <obtainFreshBeanFactory desc="通知子类刷新内部的BeanFactory并返回" class="AbstractApplicationContext">
             <refreshBeanFactory desc="刷新BeanFactory，抽象方法，各种子类实现自有逻辑。" class="AbstractRefreshableApplicationContext">
                 <!--下面的步骤我们以子类AbstractRefreshableApplicationContext的流程来说明，实际应用中就是基于xml文件的FileSystemXmlApplicationContext和ClassPathXmlApplicationContext的初始化。基于Annotation的这一步没有什么逻辑。-->
                 <hasBeanFactory desc="已经有了BeanFactory" class="">
@@ -137,7 +137,7 @@
             <getBeanFactory desc="获取BeanFactory，供后续方法使用，抽象方法，个种子类返回自己特有的BeanFactory类型（都是使用的DefaultListableBeanFactory）"/>
         </obtainFreshBeanFactory>
 
-        <prepareBeanFactory desc="准备BeanFactory" class="AbstractRefreshableApplicationContext">
+        <prepareBeanFactory desc="准备BeanFactory" class="AbstractApplicationContext">
             <setBeanClassLoader desc="设置BeanClassLoader"/>
             <setBeanExpressionResolver desc="设置BeanExpressionResolver"/>
             <addPropertyEditorRegistrar desc="设置PropertyEditorRegistrar"/>
@@ -164,7 +164,7 @@
             <addBeanPostProcessor desc="添加后置处理器LoadTimeWeaverAwareProcessor"/>
         </invokeBeanFactoryPostProcessors>
 
-        <registerBeanPostProcessors desc="注册并实例化所有的BeanPostProcessor" class="AbstractRefreshableApplicationContext">
+        <registerBeanPostProcessors desc="注册并实例化所有的BeanPostProcessor" class="AbstractApplicationContext">
             <registerBeanPostProcessors2 desc="按照给定的顺序实例化并注册所有的BeanPostProcessor" class="PostProcessorRegistrationDelegate">
                 <loop_order_BeanPostProcessors desc="循环处理，先注册实现PriorityOrdered接口的、再注册实现Ordered接口的、再注册常规的、最后注册所有的MergedBeanDefinitionPostProcessor"/>
                 <addBeanPostProcessor desc="注册ApplicationListenerDetector，该processor的作用是判断bean是否是ApplicationListener，如果是的话注册到多播器（ApplicationEventMulticaster）里"/>
