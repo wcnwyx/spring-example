@@ -1,4 +1,4 @@
-通过注解@EnableAspectJAutoProxy来开启AOP功能。
+##步骤一：通过注解@EnableAspectJAutoProxy来开启AOP功能。  
 @EnableAspectJAutoProxy注解中定义了@Import(AspectJAutoProxyRegistrar.class)，导入AspectJAutoProxyRegistrar，
 该类为ImportBeanDefinitionRegistrar接口的实现，在处理Import功能是会调用其registerBeanDefinitions方法来注入更多的beanDefinition
 
@@ -33,6 +33,7 @@ class AspectJAutoProxyRegistrar implements ImportBeanDefinitionRegistrar {
 }
 ```
 
+##步骤二：AnnotationAwareAspectJAutoProxyCreator详解  
 先看一下AnnotationAwareAspectJAutoProxyCreator这个类的父类结构以及实现了那些接口：  
 
 ``abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
@@ -53,9 +54,82 @@ SmartInstantiationAwareBeanPostProcessor接口及其父类接口主要在AOP中�
 3：postProcessAfterInitialization 默认情况下都是在该方法中返回了代理对象。  
 
 
+下面通过代码展示看下这三个接口方法具体的逻辑：  
 ```java
 public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
         implements SmartInstantiationAwareBeanPostProcessor, BeanFactoryAware {
+
+    public Object getEarlyBeanReference(Object bean, String beanName) throws BeansException {
+        //获取beanName，主要是特殊处理了FactoryBean这种类型的前缀符号
+        Object cacheKey = getCacheKey(bean.getClass(), beanName);
+        //将早期的bean实例放到map中缓存，在postProcessAfterInitialization方法中会再次使用
+        this.earlyProxyReferences.put(cacheKey, bean);
+        //必要时包装为一个代理返回
+        return wrapIfNecessary(bean, beanName, cacheKey);
+    }
+
+    public Object postProcessBeforeInstantiation(Class<?> beanClass, String beanName) throws BeansException {
+        //获取beanName，主要是特殊处理了FactoryBean这种类型的前缀符号
+        Object cacheKey = getCacheKey(beanClass, beanName);
+        
+        //初始时targetSourcedBeans是不包含任何beanName的，只有走到后续的生成代理对象了，才会将beanName放到targetSourcedBeans里
+        if (beanName == null || !this.targetSourcedBeans.contains(beanName)) {
+            if (this.advisedBeans.containsKey(cacheKey)) {
+                //已经处理过该beanName了
+                return null;
+            }
+            
+            //isInfrastructureClass判断是否是基础设施类，判断bean.getClass()是否是Advice、Pointcut、Advisor、AopInfrastructureBean或者他们的父类或父接口
+            //shouldSkip的逻辑为找到所有的Advisor，如果该bean是这些advisor里的aspect，则跳过该beanName
+            if (isInfrastructureClass(beanClass) || shouldSkip(beanClass, beanName)) {
+                //记录到advisedBeans集合中，记录内容为false，不用生成代理
+                this.advisedBeans.put(cacheKey, Boolean.FALSE);
+                return null;
+            }
+        }
+
+        if (beanName != null) {
+            TargetSource targetSource = getCustomTargetSource(beanClass, beanName);
+            // 如果存在CustomTargetSource就生成代理返回，这个后续再讲
+            if (targetSource != null) {
+                //targetSourcedBeans集合增加记录
+                this.targetSourcedBeans.add(beanName);
+                //找到可以加到该bean上的advisor,该方法后面再详细看
+                Object[] specificInterceptors = getAdvicesAndAdvisorsForBean(beanClass, beanName, targetSource);
+                //生成代理对象
+                Object proxy = createProxy(beanClass, beanName, specificInterceptors, targetSource);
+                this.proxyTypes.put(cacheKey, proxy.getClass());
+                return proxy;
+            }
+        }
+
+        return null;
+    }
+
+    public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+        if (bean != null) {
+            Object cacheKey = getCacheKey(bean.getClass(), beanName);
+            //这个比较的逻辑记录一下：首先这个方法的调用时机是在bean已经实例化、已经赋值属性，已经调用过init方法了。
+            //比如说有A、B两个bean，A需要代理
+            //情况1：不存在循环引用，创建A的doCreateBean一路走下来，根本不会调用getEarlyBeanReference方法，earlyProxyReferences这个集合里也不会有该bean，这里结果为不相等
+            //情况2：A、B存在循环引用， 
+            // 2.1: 创建A实例
+            // 2.2：将getEarlyBeanReference（A）封装到ObjectFactory中并放到了第三级缓存中
+            // 2.3：自动装配A中引用的B时触发创建B（A的后续创建流程被暂停）;  
+            // 2.4：创建B实例; 
+            // 2.5：自动装备B中引用的A时调用到了getBean(A), 这时会从三级缓存中依次获取，最终在第三级缓存拿到了ObjectFactory（2.2步骤放进去的），并执行getEarlyBeanReference（A），并将执行的结果放到了二级缓存里;
+            //      earlyProxyReferences方法执行，将bean的原生对象加入到了earlyProxyReferences中，但是返回的是A的代理对象ProxyA;
+            // 2.6: B顺利创建完成。
+            // 2.7: A的创建流程还是会继续从2.3逻辑之后继续进行，处理完自动装配B完成，再处理initBean是会走到该方法（postProcessAfterInitialization）
+            //      这时从earlyProxyReferences中remove出来的A和传入进来的A是一样的，就不会再次处理生成代理类ProxyA的逻辑了。因为A的代理类ProxyA已经在2.5步骤是被放到了二级缓存了。
+            if (this.earlyProxyReferences.remove(cacheKey) != bean) {
+                //必要时包装为一个代理返回
+                return wrapIfNecessary(bean, beanName, cacheKey);
+            }
+        }
+        return bean;
+    }
+    
     
     protected Object wrapIfNecessary(Object bean, String beanName, Object cacheKey) {
         //targetSourcedBeans包含该beanName说明已经生成过该bean的代理了
@@ -69,17 +143,18 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
             return bean;
         }
         
-        //isInfrastructureClass判断是否是基础设施类，判断bean.getClass()是否是Advice、Pointcut、Advisor、AopInfrastructureBean或者他们的父类或父接口
-        //
+        //上面方法中已介绍
         if (isInfrastructureClass(bean.getClass()) || shouldSkip(bean.getClass(), beanName)) {
             this.advisedBeans.put(cacheKey, Boolean.FALSE);
             return bean;
         }
 
-        // Create proxy if we have advice.
+        //找到可以加到该bean上的advisor,该方法后面再详细看
         Object[] specificInterceptors = getAdvicesAndAdvisorsForBean(bean.getClass(), beanName, null);
         if (specificInterceptors != DO_NOT_PROXY) {
+            //如果找到了可用的advisor，表示该类需要被代理，advisedBeans记录信息
             this.advisedBeans.put(cacheKey, Boolean.TRUE);
+            //生成代理对象
             Object proxy = createProxy(
                     bean.getClass(), beanName, specificInterceptors, new SingletonTargetSource(bean));
             this.proxyTypes.put(cacheKey, proxy.getClass());
@@ -89,5 +164,260 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
         this.advisedBeans.put(cacheKey, Boolean.FALSE);
         return bean;
     }    
+}
+```
+
+##步骤三：Aspect、Advice、Pointcut、Advisor的解析
+这一步主要顺着getAdvicesAndAdvisorsForBean这个方法看就可以了，该方法主要是找适合一个bean的所有的advisor。可以分为2小步：  
+1：找到所有系统中定义的Advice  
+2：根据Advice的pointcut，按照表达式判断是否可以匹配到目标类  
+
+```java
+public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyCreator {
+    
+    protected Object[] getAdvicesAndAdvisorsForBean(Class<?> beanClass, String beanName, TargetSource targetSource) {
+        List<Advisor> advisors = findEligibleAdvisors(beanClass, beanName);
+        if (advisors.isEmpty()) {
+            return DO_NOT_PROXY;
+        }
+        return advisors.toArray();
+    }
+
+    protected List<Advisor> findEligibleAdvisors(Class<?> beanClass, String beanName) {
+        //找到所有的Advisor
+        List<Advisor> candidateAdvisors = findCandidateAdvisors();
+        //查看哪些Advisor可以应用到此类上
+        List<Advisor> eligibleAdvisors = findAdvisorsThatCanApply(candidateAdvisors, beanClass, beanName);
+        //如果可用的Advisor集合不为空，添加一个DefaultPointcutAdvisor放到集合里
+        extendAdvisors(eligibleAdvisors);
+        if (!eligibleAdvisors.isEmpty()) {
+            //排序
+            eligibleAdvisors = sortAdvisors(eligibleAdvisors);
+        }
+        return eligibleAdvisors;
+    }
+}
+```
+
+###步骤3.1 找到所有系统中定义的Advice
+下面看下查找Advisors方法findCandidateAdvisors
+```java
+public class AnnotationAwareAspectJAutoProxyCreator extends AspectJAwareAdvisorAutoProxyCreator {
+    protected List<Advisor> findCandidateAdvisors() {
+        //调用父类的findCandidateAdvisors查找（用来获取xml配置的方式生成好的Advisor）
+        List<Advisor> advisors = super.findCandidateAdvisors();
+        //通过BeanFactoryAspectJAdvisorsBuilderAdapter查找切面Aspect来构建Advisor
+        advisors.addAll(this.aspectJAdvisorsBuilder.buildAspectJAdvisors());
+        return advisors;
+    }
+}
+```
+
+下面是父类AbstractAdvisorAutoProxyCreator种查找findCandidateAdvisors介绍  
+```java
+public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyCreator {
+    private BeanFactoryAdvisorRetrievalHelper advisorRetrievalHelper = new BeanFactoryAdvisorRetrievalHelperAdapter(beanFactory);;
+    
+    protected List<Advisor> findCandidateAdvisors() {
+        //通过advisorRetrievalHelper继续查找
+        return this.advisorRetrievalHelper.findAdvisorBeans();
+    }
+}
+
+public class BeanFactoryAdvisorRetrievalHelper {
+    public List<Advisor> findAdvisorBeans() {
+        //第一次处理过后会缓存到内部cachedAdvisorBeanNames中
+        String[] advisorNames = this.cachedAdvisorBeanNames;
+        
+        //还未处理过
+        if (advisorNames == null) {
+            //从ListableBeanFactory的查询到所有类型为Advisor.class的beanName
+            advisorNames = BeanFactoryUtils.beanNamesForTypeIncludingAncestors(
+                    this.beanFactory, Advisor.class, true, false);
+            
+            //将查询结果缓存起来
+            this.cachedAdvisorBeanNames = advisorNames;
+        }
+        if (advisorNames.length == 0) {
+            return new ArrayList<Advisor>();
+        }
+
+        List<Advisor> advisors = new ArrayList<Advisor>();
+        for (String name : advisorNames) {
+            //默认是true
+            if (isEligibleBean(name)) {
+                
+                if (this.beanFactory.isCurrentlyInCreation(name)) {
+                    //如果该Advisor正在创建过程中，不处理
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Skipping currently created advisor '" + name + "'");
+                    }
+                }
+                else {
+                    try {
+                        //将已经创建好的Advisor的bean获取到放到集合中
+                        advisors.add(this.beanFactory.getBean(name, Advisor.class));
+                    }
+                    catch (BeanCreationException ex) {
+                        throw ex;
+                    }
+                }
+            }
+        }
+        return advisors;
+    }
+}
+```
+
+下面是从BeanFactoryAspectJAdvisorsBuilderAdapter中构建Advisor
+```java
+public class BeanFactoryAspectJAdvisorsBuilder {
+    public List<Advisor> buildAspectJAdvisors() {
+        //切面类aspect的beanName会解析一次后缓存起来
+        List<String> aspectNames = this.aspectBeanNames;
+
+        if (aspectNames == null) {
+            //初始的时候还没有aspectNames,加锁处理
+            synchronized (this) {
+                aspectNames = this.aspectBeanNames;
+                if (aspectNames == null) {
+                    List<Advisor> advisors = new LinkedList<Advisor>();
+                    aspectNames = new LinkedList<String>();
+                    
+                    //从beanFactory中找到所有的Object.class类型的beanName,然后再循环判断是否是aspect
+                    String[] beanNames = BeanFactoryUtils.beanNamesForTypeIncludingAncestors(
+                            this.beanFactory, Object.class, true, false);
+                    for (String beanName : beanNames) {
+                        //处理<aop:include>标签逻辑，看是否匹配
+                        if (!isEligibleBean(beanName)) {
+                            continue;
+                        }
+                        
+                        //获取该beanName的Class
+                        Class<?> beanType = this.beanFactory.getType(beanName);
+                        if (beanType == null) {
+                            continue;
+                        }
+                        //根据是否是有@Aspect注解
+                        if (this.advisorFactory.isAspect(beanType)) {
+                            aspectNames.add(beanName);
+                            AspectMetadata amd = new AspectMetadata(beanType, beanName);
+                            //kind属性时从@Aspect注解的value属性里解析出来的，默认是SINGLETON
+                            if (amd.getAjType().getPerClause().getKind() == PerClauseKind.SINGLETON) {
+                                MetadataAwareAspectInstanceFactory factory =
+                                        new BeanFactoryAspectInstanceFactory(this.beanFactory, beanName);
+                                
+                                //获取所有的Advisor，不再往下细看，大体的逻辑是获取到这个aspect类的所有方法，
+                                //将定义有Around、Before、After、AfterReturning、AfterThrowing的注解方法找到，
+                                // 并将Pointcut和这些advice方法一起拼装在一个Advisor里（InstantiationModelAwarePointcutAdvisorImpl）
+                                List<Advisor> classAdvisors = this.advisorFactory.getAdvisors(factory);
+                                if (this.beanFactory.isSingleton(beanName)) {
+                                    //如果该aspect bean是singleton的，将解析好的Advisor全部缓存到advisorsCache中，后续直接使用
+                                    this.advisorsCache.put(beanName, classAdvisors);
+                                }
+                                else {
+                                    //如果该aspect bean是非singleton的，将factory缓存起来，后续直接通过factory.getAdvisors()来获取
+                                    this.aspectFactoryCache.put(beanName, factory);
+                                }
+                                advisors.addAll(classAdvisors);
+                            }
+                            else {
+                                // Per target or per this.
+                                if (this.beanFactory.isSingleton(beanName)) {
+                                    throw new IllegalArgumentException("Bean with name '" + beanName +
+                                            "' is a singleton, but aspect instantiation model is not singleton");
+                                }
+                                MetadataAwareAspectInstanceFactory factory =
+                                        new PrototypeAspectInstanceFactory(this.beanFactory, beanName);
+                                this.aspectFactoryCache.put(beanName, factory);
+                                advisors.addAll(this.advisorFactory.getAdvisors(factory));
+                            }
+                        }
+                    }
+                    this.aspectBeanNames = aspectNames;
+                    return advisors;
+                }
+            }
+        }
+
+        if (aspectNames.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<Advisor> advisors = new LinkedList<Advisor>();
+        for (String aspectName : aspectNames) {
+            List<Advisor> cachedAdvisors = this.advisorsCache.get(aspectName);
+            if (cachedAdvisors != null) {
+                //Singleton 类型的aspect直接从cache中获取
+                advisors.addAll(cachedAdvisors);
+            }
+            else {
+                //cache中没有，从factory中获取
+                MetadataAwareAspectInstanceFactory factory = this.aspectFactoryCache.get(aspectName);
+                advisors.addAll(this.advisorFactory.getAdvisors(factory));
+            }
+        }
+        return advisors;
+    }
+}
+```
+
+###步骤3.2 根据Advice的pointcut，按照表达式判断是否可以匹配到目标类  
+```java
+public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyCreator {
+    
+    protected List<Advisor> findAdvisorsThatCanApply(
+            List<Advisor> candidateAdvisors, Class<?> beanClass, String beanName) {
+        //做标记表示该beanName正在处理代理逻辑
+        ProxyCreationContext.setCurrentProxiedBeanName(beanName);
+        try {
+            return AopUtils.findAdvisorsThatCanApply(candidateAdvisors, beanClass);
+        }
+        finally {
+            //移除标记
+            ProxyCreationContext.setCurrentProxiedBeanName(null);
+        }
+    }
+}
+
+public abstract class AopUtils {
+    
+    public static List<Advisor> findAdvisorsThatCanApply(List<Advisor> candidateAdvisors, Class<?> clazz) {
+        if (candidateAdvisors.isEmpty()) {
+            return candidateAdvisors;
+        }
+        List<Advisor> eligibleAdvisors = new LinkedList<Advisor>();
+        for (Advisor candidate : candidateAdvisors) {
+            //先处理IntroductionAdvisor接口的
+            if (candidate instanceof IntroductionAdvisor && canApply(candidate, clazz)) {
+                eligibleAdvisors.add(candidate);
+            }
+        }
+        boolean hasIntroductions = !eligibleAdvisors.isEmpty();
+        for (Advisor candidate : candidateAdvisors) {
+            if (candidate instanceof IntroductionAdvisor) {
+                //IntroductionAdvisor接口的上一个循环已经处理过了，这里忽略处理
+                continue;
+            }
+            if (canApply(candidate, clazz, hasIntroductions)) {
+                eligibleAdvisors.add(candidate);
+            }
+        }
+        return eligibleAdvisors;
+    }
+
+    public static boolean canApply(Advisor advisor, Class<?> targetClass, boolean hasIntroductions) {
+        if (advisor instanceof IntroductionAdvisor) {
+            return ((IntroductionAdvisor) advisor).getClassFilter().matches(targetClass);
+        }
+        else if (advisor instanceof PointcutAdvisor) {
+            //PointcutAdvisor接口的，可以获取到Pointcut信息，根据Pointcut的表达式来判断是否可以
+            PointcutAdvisor pca = (PointcutAdvisor) advisor;
+            return canApply(pca.getPointcut(), targetClass, hasIntroductions);
+        }
+        else {
+            //该advisor没有配置Pointcut，所有类都使用
+            return true;
+        }
+    }
 }
 ```
