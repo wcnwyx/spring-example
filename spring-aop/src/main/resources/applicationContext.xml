@@ -7,12 +7,12 @@
             http://www.springframework.org/schema/aop
             http://www.springframework.org/schema/aop/spring-aop-3.1.xsd"
         default-autowire="byName">
-    <bean id="demoAspectXml" class="com.wcnwyx.spring.aop.example.DemoAspectXml"/>
+    <bean id="demoAspectXml" class="com.wcnwyx.spring.aop.example.pointcut.DemoAspectXml"/>
 
     <!-- aop 配置开始 -->
     <aop:config>
         <!-- 切点定义，可以理解为在哪里加入拦截器的拦截-->
-        <aop:pointcut id="pointcutId" expression="execution(public int com.wcnwyx.spring.aop.example.DemoBean.*(..))"/>
+        <aop:pointcut id="pointcutId" expression="execution(public int com.wcnwyx.spring.aop.example.pointcut.DemoBean.*(..))"/>
         <!-- 方面定义：可以理解为拦截器 -->
         <aop:aspect ref="demoAspectXml">
             <!-- aop 的各种类型通知（advice） 前置、后置、环绕等-->
@@ -20,7 +20,7 @@
             <aop:after method="after" pointcut-ref="pointcutId"/>
             <aop:after-returning method="afterReturn" pointcut-ref="pointcutId"/>
             <aop:after-throwing method="afterThrowing" pointcut-ref="pointcutId"/>
-<!--            <aop:around method="around" pointcut="execution(public int com.wcnwyx.spring.aop.example.DemoBean.*(..))"/>-->
+<!--            <aop:around method="around" pointcut="execution(public int com.wcnwyx.spring.aop.example.pointcut.DemoBean.*(..))"/>-->
         </aop:aspect>
     </aop:config>
 </beans>

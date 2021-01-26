@@ -1,4 +1,4 @@
-package com.wcnwyx.spring.aop.example;
+package com.wcnwyx.spring.aop.example.pointcut;
 
 import org.springframework.stereotype.Component;
 

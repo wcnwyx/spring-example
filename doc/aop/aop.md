@@ -308,8 +308,8 @@ public class BeanFactoryAspectJAdvisorsBuilder {
                                         new BeanFactoryAspectInstanceFactory(this.beanFactory, beanName);
                                 
                                 //获取所有的Advisor，不再往下细看，大体的逻辑是获取到这个aspect类的所有方法，
-                                //将定义有Around、Before、After、AfterReturning、AfterThrowing的注解方法找到，
-                                // 并将Pointcut和这些advice方法一起拼装在一个Advisor里（InstantiationModelAwarePointcutAdvisorImpl）
+                                //将定义有Around、Before、After、AfterReturning、AfterThrowing的注解方法找到，或者通过@DeclareParents注解定义的变量
+                                //并将Pointcut和这些advice方法一起拼装在一个Advisor里（InstantiationModelAwarePointcutAdvisorImpl或者DeclareParentsAdvisor）
                                 List<Advisor> classAdvisors = this.advisorFactory.getAdvisors(factory);
                                 if (this.beanFactory.isSingleton(beanName)) {
                                     //如果该aspect bean是singleton的，将解析好的Advisor全部缓存到advisorsCache中，后续直接使用
@@ -387,7 +387,7 @@ public abstract class AopUtils {
         }
         List<Advisor> eligibleAdvisors = new LinkedList<Advisor>();
         for (Advisor candidate : candidateAdvisors) {
-            //先处理IntroductionAdvisor接口的
+            //先处理IntroductionAdvisor接口的，通过@DeclareParents生成的Advisor就是这种
             if (candidate instanceof IntroductionAdvisor && canApply(candidate, clazz)) {
                 eligibleAdvisors.add(candidate);
             }
@@ -407,6 +407,7 @@ public abstract class AopUtils {
 
     public static boolean canApply(Advisor advisor, Class<?> targetClass, boolean hasIntroductions) {
         if (advisor instanceof IntroductionAdvisor) {
+            //根据@DeclareParents注解配置的value表达式匹配
             return ((IntroductionAdvisor) advisor).getClassFilter().matches(targetClass);
         }
         else if (advisor instanceof PointcutAdvisor) {

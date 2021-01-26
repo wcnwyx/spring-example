@@ -1,4 +1,4 @@
-package com.wcnwyx.spring.aop.example;
+package com.wcnwyx.spring.aop.example.pointcut;
 
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.*;
@@ -14,7 +14,7 @@ import java.util.Arrays;
 public class DemoAspect {
 
     //抽象出公共的切入点表达式
-    @Pointcut("execution(public int com.wcnwyx.spring.aop.example.DemoBean.*(..))")
+    @Pointcut("execution(public int com.wcnwyx.spring.aop.example.pointcut.DemoBean.*(..))")
     public void pointCut(){
     }
 
