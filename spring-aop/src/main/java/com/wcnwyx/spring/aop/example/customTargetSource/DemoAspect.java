@@ -1,4 +1,4 @@
-package com.wcnwyx.spring.aop.example.pointcut;
+package com.wcnwyx.spring.aop.example.customTargetSource;
 
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.*;
@@ -11,13 +11,12 @@ import java.util.Arrays;
  * 切面类
  */
 @Component
-@Scope("prototype")
 @Aspect
 public class DemoAspect {
     private int flag = 0;
 
     //抽象出公共的切入点表达式
-    @Pointcut("execution(public int com.wcnwyx.spring.aop.example.pointcut.DemoBean.*(..))")
+    @Pointcut("execution(public int com.wcnwyx.spring.aop.example.customTargetSource.DemoBean.*(..))")
     public void pointCut(){
     }
 
@@ -46,7 +45,4 @@ public class DemoAspect {
         System.out.println("log exception:"+exception.getMessage()+" 方法名："+joinPoint.getSignature().getName());
     }
 
-    public void logRound(){
-
-    }
 }

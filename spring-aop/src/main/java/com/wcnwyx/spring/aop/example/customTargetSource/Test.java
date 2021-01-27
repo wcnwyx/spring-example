@@ -1,4 +1,4 @@
-package com.wcnwyx.spring.aop.example.pointcut;
+package com.wcnwyx.spring.aop.example.customTargetSource;
 
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.support.AbstractApplicationContext;
