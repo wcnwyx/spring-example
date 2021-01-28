@@ -16,7 +16,7 @@ public interface Advice {
 }
 ```
 ##Interceptor接口
-Advice接口的子接口不止有Interceptor，只是先按照Interceptor这个分支往下梳理而已。  
+Advice接口的子接口不止有Interceptor，只是先按照Interceptor这个分支往下梳理而已。另一个分支后续篇章再看。    
 ```java
 /**
  * This interface represents a generic interceptor.
