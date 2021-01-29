@@ -21,7 +21,7 @@ class AspectJAutoProxyRegistrar implements ImportBeanDefinitionRegistrar {
 		AnnotationAttributes enableAspectJAutoProxy =
 				AnnotationConfigUtils.attributesFor(importingClassMetadata, EnableAspectJAutoProxy.class);
 		if (enableAspectJAutoProxy.getBoolean("proxyTargetClass")) {
-		    //设置proxyTargetClass属性
+		    //设置proxyTargetClass属性，是否强制使用cglib生成代理对象
 			AopConfigUtils.forceAutoProxyCreatorToUseClassProxying(registry);
 		}
 		if (enableAspectJAutoProxy.getBoolean("exposeProxy")) {
@@ -96,7 +96,7 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
                 this.targetSourcedBeans.add(beanName);
                 //找到可以加到该bean上的advisor,该方法后面再详细看
                 Object[] specificInterceptors = getAdvicesAndAdvisorsForBean(beanClass, beanName, targetSource);
-                //生成代理对象
+                //生成代理对象（后面步骤再看）
                 Object proxy = createProxy(beanClass, beanName, specificInterceptors, targetSource);
                 this.proxyTypes.put(cacheKey, proxy.getClass());
                 return proxy;
@@ -154,7 +154,7 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
         if (specificInterceptors != DO_NOT_PROXY) {
             //如果找到了可用的advisor，表示该类需要被代理，advisedBeans记录信息
             this.advisedBeans.put(cacheKey, Boolean.TRUE);
-            //生成代理对象
+            //生成代理对象（后面步骤再看）
             Object proxy = createProxy(
                     bean.getClass(), beanName, specificInterceptors, new SingletonTargetSource(bean));
             this.proxyTypes.put(cacheKey, proxy.getClass());
@@ -298,7 +298,7 @@ public class BeanFactoryAspectJAdvisorsBuilder {
                         if (beanType == null) {
                             continue;
                         }
-                        //根据是否是有@Aspect注解
+                        //根据是否是有@Aspect注解，这里的advisorFactory就是前面接口篇章讲到的了。
                         if (this.advisorFactory.isAspect(beanType)) {
                             aspectNames.add(beanName);
                             AspectMetadata amd = new AspectMetadata(beanType, beanName);
@@ -307,7 +307,7 @@ public class BeanFactoryAspectJAdvisorsBuilder {
                                 MetadataAwareAspectInstanceFactory factory =
                                         new BeanFactoryAspectInstanceFactory(this.beanFactory, beanName);
                                 
-                                //获取所有的Advisor，不再往下细看，大体的逻辑是获取到这个aspect类的所有方法，
+                                //获取所有的Advisor，在前面接口篇章中已经梳理过这个advisor工厂获取advisor的逻辑了。大体逻辑如下：
                                 //将定义有Around、Before、After、AfterReturning、AfterThrowing的注解方法找到，或者通过@DeclareParents注解定义的变量
                                 //并将Pointcut和这些advice方法一起拼装在一个Advisor里（InstantiationModelAwarePointcutAdvisorImpl或者DeclareParentsAdvisor）
                                 List<Advisor> classAdvisors = this.advisorFactory.getAdvisors(factory);
@@ -322,14 +322,19 @@ public class BeanFactoryAspectJAdvisorsBuilder {
                                 advisors.addAll(classAdvisors);
                             }
                             else {
-                                // Per target or per this.
+                                //如果@Aspect注解中配置的是perThis、perTarget这些，但是beanFactory中该bean的定义确实singleton，直接抛出异常
                                 if (this.beanFactory.isSingleton(beanName)) {
                                     throw new IllegalArgumentException("Bean with name '" + beanName +
                                             "' is a singleton, but aspect instantiation model is not singleton");
                                 }
+                                
+                                //定义一个PrototypeAspectInstanceFactory用来生成Aspect实例
+                                //注意，虽然@Aspect注解里配置了perThis，但是如果@Scope配置了singleton也会抛出异常的
                                 MetadataAwareAspectInstanceFactory factory =
                                         new PrototypeAspectInstanceFactory(this.beanFactory, beanName);
+                                //缓存aspectFactory
                                 this.aspectFactoryCache.put(beanName, factory);
+                                //生成Advisor
                                 advisors.addAll(this.advisorFactory.getAdvisors(factory));
                             }
                         }
@@ -351,7 +356,7 @@ public class BeanFactoryAspectJAdvisorsBuilder {
                 advisors.addAll(cachedAdvisors);
             }
             else {
-                //cache中没有，从factory中获取
+                //cache中没有，从缓存中获取到AspectFactory直接构建
                 MetadataAwareAspectInstanceFactory factory = this.aspectFactoryCache.get(aspectName);
                 advisors.addAll(this.advisorFactory.getAdvisors(factory));
             }
@@ -418,6 +423,94 @@ public abstract class AopUtils {
         else {
             //该advisor没有配置Pointcut，所有类都使用
             return true;
+        }
+    }
+}
+```
+
+##步骤4：创建代理对象：
+```java
+public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
+		implements SmartInstantiationAwareBeanPostProcessor, BeanFactoryAware {
+    /**
+     * Create an AOP proxy for the given bean.
+     */
+    protected Object createProxy(
+            Class<?> beanClass, String beanName, Object[] specificInterceptors, TargetSource targetSource) {
+
+        if (this.beanFactory instanceof ConfigurableListableBeanFactory) {
+            AutoProxyUtils.exposeTargetClass((ConfigurableListableBeanFactory) this.beanFactory, beanName, beanClass);
+        }
+
+        ProxyFactory proxyFactory = new ProxyFactory();
+        proxyFactory.copyFrom(this);
+
+        if (!proxyFactory.isProxyTargetClass()) {
+            if (shouldProxyTargetClass(beanClass, beanName)) {
+                proxyFactory.setProxyTargetClass(true);
+            }
+            else {
+                evaluateProxyInterfaces(beanClass, proxyFactory);
+            }
+        }
+
+        Advisor[] advisors = buildAdvisors(beanName, specificInterceptors);
+        proxyFactory.addAdvisors(advisors);
+        proxyFactory.setTargetSource(targetSource);
+        customizeProxyFactory(proxyFactory);
+
+        proxyFactory.setFrozen(this.freezeProxy);
+        if (advisorsPreFiltered()) {
+            proxyFactory.setPreFiltered(true);
+        }
+
+        return proxyFactory.getProxy(getProxyClassLoader());
+    }
+}
+```
+
+##步骤5：执行过程  
+通过jdk的aop代理来看下就好，主要是看下拦截器链的创建和Invocation的创建
+```java
+final class JdkDynamicAopProxy implements AopProxy, InvocationHandler, Serializable {
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        MethodInvocation invocation;
+        Object oldProxy = null;
+        boolean setProxyContext = false;
+
+        TargetSource targetSource = this.advised.targetSource;
+        Class<?> targetClass = null;
+        Object target = null;
+
+        try {
+
+            Object retVal;
+
+            //获取目标对象
+            target = targetSource.getTarget();
+            if (target != null) {
+                targetClass = target.getClass();
+            }
+
+            //获取拦截器链，这个方法不细看了，大概逻辑就是：
+            //根据advisor获取到advice，如果advice本身就是MethodInterceptor的实现，直接使用，如果不是，封装一下再使用
+            List<Object> chain = this.advised.getInterceptorsAndDynamicInterceptionAdvice(method, targetClass);
+
+            if (chain.isEmpty()) {
+                //如果没有拦截器链，直接反射调用即可，mehtod.invoke(target,args)
+                Object[] argsToUse = AopProxyUtils.adaptArgumentsIfNecessary(method, args);
+                retVal = AopUtils.invokeJoinpointUsingReflection(target, method, argsToUse);
+            }
+            else {
+                //创建一个MethodInvocation,内部依次调用，这个在前面的接口文章里已经详细说过了
+                invocation = new ReflectiveMethodInvocation(proxy, target, method, args, targetClass, chain);
+                retVal = invocation.proceed();
+            }
+
+            return retVal;
+        }finally {
+            
         }
     }
 }
