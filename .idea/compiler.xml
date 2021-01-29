@@ -7,9 +7,12 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="spring-ioc" />
-        <module name="spring-tx" />
         <module name="spring-aop" />
+        <module name="spring-jdbc-tx" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="spring-tx" target="1.7" />
+    </bytecodeTargetLevel>
   </component>
 </project>
