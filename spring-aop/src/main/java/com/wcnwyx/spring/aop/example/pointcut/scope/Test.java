@@ -1,4 +1,4 @@
-package com.wcnwyx.spring.aop.example.pointcut;
+package com.wcnwyx.spring.aop.example.pointcut.scope;
 
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.support.AbstractApplicationContext;
@@ -6,11 +6,13 @@ import org.springframework.context.support.AbstractApplicationContext;
 public class Test {
     public static void main(String[] args) {
         AbstractApplicationContext applicationContext = new AnnotationConfigApplicationContext(Config.class);
-        DemoBean demoBean = applicationContext.getBean("demoBean", DemoBean.class);
-        demoBean.div(1, 1);
+        DemoBean1 demoBean1 = applicationContext.getBean("demoBean1", DemoBean1.class);
+        demoBean1.div(1, 1);
+        demoBean1.div(1, 1);
 
-        demoBean.add(1,2);
-
+        DemoBean2 demoBean2 = applicationContext.getBean("demoBean2", DemoBean2.class);
+        demoBean2.div(1, 1);
+        demoBean2.div(1, 1);
         applicationContext.close();
     }
 }
