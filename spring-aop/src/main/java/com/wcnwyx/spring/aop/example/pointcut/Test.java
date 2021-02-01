@@ -14,32 +14,23 @@ public class Test {
 //        applicationContext.close();
 
         Object[] array = new Object[]{new MyInt(1)};
-        System.out.println(array.hashCode()+" "+array[0]);
         Object[] arrayClone = array.clone();
+//        array[0]=new MyInt(2);
+        MyInt myInt = (MyInt)array[0];
+        myInt.setA(2);
+        System.out.println(array.hashCode()+" "+array[0]);
         System.out.println(arrayClone.hashCode()+" "+arrayClone[0]);
-
-        MyInt myInt = new MyInt(2);
-        System.out.println(myInt);
-        System.out.println(myInt.clone());
-
-//        Object[] array = new Object[]{new MyInt(1)};
-//        System.out.println(array[0]);
-//        test(array);
-//        System.out.println(array[0]);
+//
+//        MyInt myInt = new MyInt(2);
+//        System.out.println(myInt);
+//        System.out.println(myInt.clone());
 
 //        Object[] array = new Object[]{1};
-//        System.out.println(array[0]);
-//        test1(array);
-//        System.out.println(array[0]);
+//        Object[] arrayClone = array.clone();
+//        array[0] = 2;
+//        System.out.println(array.hashCode()+" "+array[0]);
+//        System.out.println(arrayClone.hashCode()+" "+arrayClone[0]);
+
     }
 
-    public static void test(Object[] array){
-        array[0] = new MyInt(2);
-        System.out.println(array[0]);
-    }
-
-    public static void test1(Object[] array){
-        array[0] = 2;
-        System.out.println(array[0]);
-    }
 }
