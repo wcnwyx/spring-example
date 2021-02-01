@@ -1,7 +1,7 @@
 从顶层接口往下看，依次是Joinpoint->Invocation->MethodInvocation->ProxyMethodInvocation，最后通过具体的实现类ReflectiveMethodInvocation来理解所有的接口及方法。
 ReflectiveMethodInvocation 这个类是在执行代理方法时new出来的，通过这个类把所有的advice和目标方法串联起来执行的。  
 
-###Joinport 接口
+###Joinpoit 接口
 ```java
 /**
  * This interface represents a generic runtime joinpoint (in the AOP

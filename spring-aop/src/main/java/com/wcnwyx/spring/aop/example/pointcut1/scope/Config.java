@@ -1,4 +1,4 @@
-package com.wcnwyx.spring.aop.example.pointcut.scope;
+package com.wcnwyx.spring.aop.example.pointcut1.scope;
 
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;

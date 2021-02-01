@@ -188,7 +188,7 @@ public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyC
         List<Advisor> candidateAdvisors = findCandidateAdvisors();
         //查看哪些Advisor可以应用到此类上
         List<Advisor> eligibleAdvisors = findAdvisorsThatCanApply(candidateAdvisors, beanClass, beanName);
-        //如果可用的Advisor集合不为空，添加一个DefaultPointcutAdvisor放到集合里
+        //如果可用的Advisor集合不为空，添加一个ExposeInvocationInterceptor放到集合里（后面再看）
         extendAdvisors(eligibleAdvisors);
         if (!eligibleAdvisors.isEmpty()) {
             //排序
@@ -369,6 +369,21 @@ public class BeanFactoryAspectJAdvisorsBuilder {
 ###步骤3.2 根据Advice的pointcut，按照表达式判断是否可以匹配到目标类  
 ```java
 public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyCreator {
+
+    protected List<Advisor> findEligibleAdvisors(Class<?> beanClass, String beanName) {
+        //找到所有的Advisor
+        List<Advisor> candidateAdvisors = findCandidateAdvisors();
+        //查看哪些Advisor可以应用到此类上
+        List<Advisor> eligibleAdvisors = findAdvisorsThatCanApply(candidateAdvisors, beanClass, beanName);
+        //如果可用的Advisor集合不为空，添加一个ExposeInvocationInterceptor放到集合里
+        //该类中该方法为空，子类可以扩展，AspectJAwareAdvisorAutoProxyCreator这个子类重写了该方法
+        extendAdvisors(eligibleAdvisors);
+        if (!eligibleAdvisors.isEmpty()) {
+            //排序
+            eligibleAdvisors = sortAdvisors(eligibleAdvisors);
+        }
+        return eligibleAdvisors;
+    }
     
     protected List<Advisor> findAdvisorsThatCanApply(
             List<Advisor> candidateAdvisors, Class<?> beanClass, String beanName) {
@@ -425,6 +440,54 @@ public abstract class AopUtils {
             return true;
         }
     }
+}
+```
+
+看一下添加ExposeInvocationInterceptor的逻辑
+```java
+public class AspectJAwareAdvisorAutoProxyCreator extends AbstractAdvisorAutoProxyCreator {
+    
+    /**
+     * Adds an {@link ExposeInvocationInterceptor} to the beginning of the advice chain.
+     * These additional advices are needed when using AspectJ expression pointcuts
+     * and when using AspectJ-style advice.
+     */
+    @Override
+    protected void extendAdvisors(List<Advisor> candidateAdvisors) {
+        AspectJProxyUtils.makeAdvisorChainAspectJCapableIfNecessary(candidateAdvisors);
+    }
+}
+
+
+public abstract class AspectJProxyUtils {
+
+    public static boolean makeAdvisorChainAspectJCapableIfNecessary(List<Advisor> advisors) {
+        if (!advisors.isEmpty()) {
+            boolean foundAspectJAdvice = false;
+            for (Advisor advisor : advisors) {
+                // Be careful not to get the Advice without a guard, as
+                // this might eagerly instantiate a non-singleton AspectJ aspect
+                if (isAspectJAdvice(advisor)) {
+                    foundAspectJAdvice = true;
+                }
+            }
+            if (foundAspectJAdvice && !advisors.contains(ExposeInvocationInterceptor.ADVISOR)) {
+                //如果有AspectJ类型的Advisor就将ExposeInvocationInterceptor添加到集合头部
+                //ExposeInvocationInterceptor这个拦截器会保存当前的Invocation在ThreadLocal中，实际应用在Advice-Interceptor接口中有讲到
+                advisors.add(0, ExposeInvocationInterceptor.ADVISOR);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isAspectJAdvice(Advisor advisor) {
+        return (advisor instanceof InstantiationModelAwarePointcutAdvisor ||
+                advisor.getAdvice() instanceof AbstractAspectJAdvice ||
+                (advisor instanceof PointcutAdvisor &&
+                        ((PointcutAdvisor) advisor).getPointcut() instanceof AspectJExpressionPointcut));
+    }
+
 }
 ```
 

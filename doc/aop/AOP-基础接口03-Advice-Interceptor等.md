@@ -66,7 +66,7 @@ public interface MethodInterceptor extends Interceptor {
 ```
 
 ##五个具体的方法拦截器实现类
-接下来我们看具体的MethodInterceptor实现类，分别对应着着五中通知@before、@After、@AfterReturning、@AfterThrowing、@Around。  
+接下来我们看具体的MethodInterceptor实现类，分别对应着着五中通知@before、@After、@AfterReturning、@AfterThrowing、@Around以及一个特殊的ExposeInvocationInterceptor。  
 注意留一下各个类实现MethodInterceptor的invoke方法逻辑。  
 ```java
 /**
@@ -193,15 +193,57 @@ public class AspectJAroundAdvice extends AbstractAspectJAdvice implements Method
         if (!(mi instanceof ProxyMethodInvocation)) {
             throw new IllegalStateException("MethodInvocation is not a Spring ProxyMethodInvocation: " + mi);
         }
-        //around的具体实行逻辑后面我们再分析
         ProxyMethodInvocation pmi = (ProxyMethodInvocation) mi;
+        //将ProxyMethodInvocation封装到一个MethodInvocationProceedingJoinPoint中
         ProceedingJoinPoint pjp = lazyGetProceedingJoinPoint(pmi);
         JoinPointMatch jpm = getJoinPointMatch(pmi);
+        //调用父类方法执行@Around标注的通知方法
         return invokeAdviceMethod(pjp, jpm, null, null);
     }
 
     protected ProceedingJoinPoint lazyGetProceedingJoinPoint(ProxyMethodInvocation rmi) {
         return new MethodInvocationProceedingJoinPoint(rmi);
+    }
+}
+
+
+public class ExposeInvocationInterceptor implements MethodInterceptor, PriorityOrdered, Serializable {
+
+    public static final ExposeInvocationInterceptor INSTANCE = new ExposeInvocationInterceptor();
+
+    public static final Advisor ADVISOR = new DefaultPointcutAdvisor(INSTANCE) {
+        @Override
+        public String toString() {
+            return ExposeInvocationInterceptor.class.getName() + ".ADVISOR";
+        }
+    };
+
+    //ThreadLocal保持MethodInvocation
+    private static final ThreadLocal<MethodInvocation> invocation =
+            new NamedThreadLocal<MethodInvocation>("Current AOP method invocation");
+
+    //获取当前的Invocation
+    public static MethodInvocation currentInvocation() throws IllegalStateException {
+        MethodInvocation mi = invocation.get();
+        if (mi == null)
+            throw new IllegalStateException(
+                    "No MethodInvocation found: Check that an AOP invocation is in progress, and that the " +
+                            "ExposeInvocationInterceptor is upfront in the interceptor chain. Specifically, note that " +
+                            "advices with order HIGHEST_PRECEDENCE will execute before ExposeInvocationInterceptor!");
+        return mi;
+    }
+
+
+    @Override
+    public Object invoke(MethodInvocation mi) throws Throwable {
+        //执行逻辑就是把当前的MethodInvocation保存到TheadLocal中，然后就mi.proceed()
+        MethodInvocation oldInvocation = invocation.get();
+        invocation.set(mi);
+        try {
+            return mi.proceed();
+        } finally {
+            invocation.set(oldInvocation);
+        }
     }
 }
 ```
@@ -229,7 +271,7 @@ public class ReflectiveMethodInvocation implements ProxyMethodInvocation, Clonea
 }
 ```
 比如说Invocation里的拦截器链interceptorsAndDynamicMethodMatchers这个集合里有4个方法拦截器（@AfterThrowing->@AfterReturning->@After->@before）。
-其实默认会在拦截器链首部增加一个固定的拦截器ExposeInvocationInterceptor，这个拦截器是用来保存当前的Invocation的，这里忽略不看。  
+默认会在拦截器链首部增加一个固定的拦截器ExposeInvocationInterceptor，这个拦截器是用来保存当前的Invocation的，这里忽略不看。  
 拦截器链在放到Invocation之前是经过排序的，这个点后面源码梳理的过程中看，排序的顺序是：@AfterThrowing->@AfterReturning->@After->@before  
 currentInterceptorIndex缩写为：index   
 interceptorsAndDynamicMethodMatchers缩写为：list   
@@ -249,4 +291,3 @@ Invocation缩写为：mi
 12. 回退到步骤4执行afterReturning.invokeAdvice(). 具体的afterReturning方法被执行了。
 13. 回退到步骤2，根据是否捕获到异常，决定afterThrowing.invokeAdvice（）方法是否需要执行。
 14. 执行完毕。
-
