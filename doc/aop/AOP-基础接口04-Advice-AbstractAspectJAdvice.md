@@ -136,6 +136,7 @@ public abstract class AbstractAspectJAdvice implements Advice, AspectJPrecedence
         JoinPoint jp = (JoinPoint) pmi.getUserAttribute(JOIN_POINT_KEY);
         if (jp == null) {
             //这里也用了一个MethodInvocationProceedingJoinPoint，是不是和AspectJAroundAdvice里的一样呢。
+            //所以@Around方法里获取的JoinPoint和@Before、@After这些不是同一个JoinPoint对象，但是里面封装的MethodInvocation是同一个
             //这里返回的是jp这个变量，是一个ProceedingJoinPoint，这个JoinPoint不是Invocation的父接口JoinPoint
             jp = new MethodInvocationProceedingJoinPoint(pmi);
             pmi.setUserAttribute(JOIN_POINT_KEY, jp);
@@ -342,8 +343,8 @@ public class MethodInvocationProceedingJoinPoint implements ProceedingJoinPoint,
     }
 }
 ```
-getArgs()第一次执行，会将arguments数组克隆一份（注意是浅克隆）缓存起来，虽然说proceed(Object[] arguments)的时候将老的methodInvocation的arg也修改了，  
-但是MethodInvocationProceedingJoinPoint已经将args缓存起来了，再次获取还是第一次缓存的arg数组两个int 1和0.  
+原因一：args进行了缓存。  
+原因二：使用的int是数值拷贝，尽管这里用的是浅拷贝，修改了原始Object[]里的数值，克隆的Object[]里的值也不会变的。  
 
 
 那在@AfterThrowing捕获以下异常，再次调用proceed执行一次是否可以呢？  

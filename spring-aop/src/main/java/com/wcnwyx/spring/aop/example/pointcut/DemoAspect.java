@@ -16,54 +16,34 @@ import java.util.Arrays;
 public class DemoAspect {
 
     //抽象出公共的切入点表达式
-    @Pointcut("execution(public int com.wcnwyx.spring.aop.example.pointcut.DemoBean.div(..))")
+    @Pointcut("execution(public int com.wcnwyx.spring.aop.example.pointcut.DemoBean.*(..))")
     public void pointCut(){
     }
 
     //前置通知
     @Before("pointCut()")
     public void logBefore(JoinPoint joinPoint){
-        System.out.println("logBefore... joinPoint"+joinPoint.hashCode());
-        System.out.println("logBefore... 方法名:" + joinPoint.getSignature()+" 参数："+ Arrays.asList(joinPoint.getArgs()));
+        System.out.println("log begin... 方法名:" + joinPoint.getSignature()+" 参数："+ Arrays.asList(joinPoint.getArgs()));
     }
 
     //后置通知
     @After("pointCut()")
     public void logAfter(){
-        System.out.println("logAfter... ");
+        System.out.println("log end... ");
     }
 
     //返回通知
     @AfterReturning(value = "pointCut()", returning = "result")
     public void logAfterReturning(Object result){
-        System.out.println("logAfterReturning. result:"+result);
+        System.out.println("log return. result:"+result);
     }
 
     //异常通知
     //多个参数的情况下，JoinPoint必须在第一位
     @AfterThrowing(value = "pointCut()", throwing = "throwable")
-    public void logAfterThrowing(JoinPoint joinPoint, Throwable throwable){
-        System.out.println("logAfterThrowing:"+throwable.getMessage());
+    public void logAfterThrowing(Throwable throwable){
+        System.out.println("log exception:"+throwable.getMessage());
     }
-
-//    //异常通知
-//    //多个参数的情况下，JoinPoint必须在第一位
-//    @AfterThrowing(value = "pointCut()", throwing = "throwable")
-//    public Object logAfterThrowing(JoinPoint joinPoint, Throwable throwable){
-//        Object result = null;
-//        System.out.println("logAfterThrowing:"+throwable.getMessage());
-//        if(throwable instanceof ArithmeticException) {
-//            MethodInvocationProceedingJoinPoint mipjp = (MethodInvocationProceedingJoinPoint) joinPoint;
-//            Object[] args = joinPoint.getArgs();
-//            args[1] = 1;
-//            try {
-//                result = mipjp.proceed(args);
-//            } catch (Throwable e) {
-//                e.printStackTrace();
-//            }
-//        }
-//        return result;
-//    }
 
     @Around(value = "pointCut()")
     public Object logAround(ProceedingJoinPoint joinPoint){

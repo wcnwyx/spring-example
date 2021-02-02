@@ -3,34 +3,17 @@ package com.wcnwyx.spring.aop.example.pointcut;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.support.AbstractApplicationContext;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Test {
-    public static void main(String[] args) {
-//        AbstractApplicationContext applicationContext = new AnnotationConfigApplicationContext(Config.class);
-//        DemoBean demoBean = applicationContext.getBean("demoBean", DemoBean.class);
-//        demoBean.div(new MyInt(1), new MyInt(0));
-//
-//        applicationContext.close();
+    public static void main(String[] args){
+        AbstractApplicationContext applicationContext = new AnnotationConfigApplicationContext(Config.class);
+        DemoBean demoBean = applicationContext.getBean("demoBean", DemoBean.class);
+        demoBean.div(new MyInt(1), new MyInt(0));
 
-        Object[] array = new Object[]{new MyInt(1)};
-        Object[] arrayClone = array.clone();
-//        array[0]=new MyInt(2);
-        MyInt myInt = (MyInt)array[0];
-        myInt.setA(2);
-        System.out.println(array.hashCode()+" "+array[0]);
-        System.out.println(arrayClone.hashCode()+" "+arrayClone[0]);
-//
-//        MyInt myInt = new MyInt(2);
-//        System.out.println(myInt);
-//        System.out.println(myInt.clone());
-
-//        Object[] array = new Object[]{1};
-//        Object[] arrayClone = array.clone();
-//        array[0] = 2;
-//        System.out.println(array.hashCode()+" "+array[0]);
-//        System.out.println(arrayClone.hashCode()+" "+arrayClone[0]);
-
+        applicationContext.close();
     }
-
 }
