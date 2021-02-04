@@ -11,8 +11,9 @@ public class InnerDao {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void inner(){
-        jdbcTemplate.execute("insert into user(name,sex) values('inner',1)");
+    @Transactional(propagation = Propagation.REQUIRED)
+    public void inner() throws Exception{
+        jdbcTemplate.execute("insert into user(name) values('inner')");
+        throw new RuntimeException();
     }
 }

@@ -6,10 +6,6 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Propagation.REQUIRED : inner发现已有事务，和outer使用同一个事务，inner报错，两个方法都回滚。
- *
- */
 @Repository
 public class OuterDao {
     @Autowired
@@ -17,15 +13,9 @@ public class OuterDao {
     @Autowired
     private InnerDao innerDao;
 
-    @Transactional()
-    public void outer(){
-        jdbcTemplate.execute("insert into user(name,sex) values('outer',1)");
-//        try{
-            innerDao.inner();
-//        }catch (Exception e){
-//
-//        }
-        int a = 1/0;
+    public void outer() throws Exception{
+        jdbcTemplate.execute("insert into user(name) values('outer')");
+        innerDao.inner();
     }
 
 
