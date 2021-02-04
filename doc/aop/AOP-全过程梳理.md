@@ -169,8 +169,8 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 
 ##步骤三：Aspect、Advice、Pointcut、Advisor的解析
 这一步主要顺着getAdvicesAndAdvisorsForBean这个方法看就可以了，该方法主要是找适合一个bean的所有的advisor。可以分为2小步：  
-1：找到所有系统中定义的Advice  
-2：根据Advice的pointcut，按照表达式判断是否可以匹配到目标类  
+1：找到所有系统中定义的Advisor  
+2：根据Advisor的pointcut，按照表达式判断是否可以匹配到目标类  
 
 ```java
 public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyCreator {
